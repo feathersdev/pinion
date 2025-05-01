@@ -56,14 +56,14 @@
   "dependencies": {
     "@types/inquirer": "^9.0.7",
     "chalk": "^5.4.1",
-    "commander": "^13.0.0",
-    "inquirer": "^9.3.2",
-    "tsx": "^4.19.2"
+    "commander": "^13.1.0",
+    "inquirer": "^12.6.0",
+    "tsx": "^4.19.4"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "shx": "^0.3.4",
-    "typescript": "^5.7.2"
+    "@types/node": "^22.15.3",
+    "shx": "^0.4.0",
+    "typescript": "^5.8.3"
   },
   "gitHead": "a7580c163eaf4a0c38e7e0784d5e8785cdea6416"
 }
