@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.5.6](https://github.com/feathershq/pinion/compare/v0.5.5...v0.5.6) (2026-06-01)
+
+### Bug Fixes
+
+- **dependencies:** Update all dependencies ([#80](https://github.com/feathershq/pinion/issues/80)) ([b29ec06](https://github.com/feathershq/pinion/commit/b29ec06193ba503ce5eb2bc6401363fdf7de5251))
+- **dependencies:** Update all dependencies ([#95](https://github.com/feathershq/pinion/issues/95)) ([5b37215](https://github.com/feathershq/pinion/commit/5b3721552beb51472ab86909710d0acbb038af8a))
+
 ## [0.5.5](https://github.com/feathershq/pinion/compare/v0.5.4...v0.5.5) (2024-10-17)
 
 ### Bug Fixes
