@@ -47,6 +47,6 @@ Head over to the [Pinion documentation](https://feathers.cloud/pinion) for the f
 
 ## License
 
-Copyright (c) 2024 Feathers Cloud Inc.
+Copyright (c) 2026 Feathers Cloud Inc.
 
 Licensed under the [MIT license](./LICENSE).
