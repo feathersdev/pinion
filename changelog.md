@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.5.7](https://github.com/feathershq/pinion/compare/v0.5.6...v0.5.7) (2026-06-04)
+
+### Bug Fixes
+
+- Revert dependency update ([c120dd0](https://github.com/feathershq/pinion/commit/c120dd060b74d052228caf20195c2d192446756c))
+
 ## [0.5.6](https://github.com/feathershq/pinion/compare/v0.5.5...v0.5.6) (2026-06-01)
 
 ### Bug Fixes
