@@ -4,7 +4,7 @@ import chalk from 'chalk'
 
 import { loadModule } from './utils.js'
 
-const prompt: typeof inquirer.prompt = inquirer.prompt
+const { prompt } = inquirer
 const { yellow, red, blue } = chalk
 
 export interface Logger {
