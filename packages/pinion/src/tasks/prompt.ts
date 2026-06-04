@@ -1,4 +1,4 @@
-import { Question, PromptSession } from 'inquirer'
+import { Question, QuestionCollection } from 'inquirer'
 import { PinionContext, Callable, getCallable } from '../core.js'
 import { addTrace } from './helpers.js'
 
@@ -26,7 +26,7 @@ export type AnswerType<Q extends Question> = Q extends { type: 'input' }
 /**
  * Get the types for the answers from a prompt() function
  */
-export type AnswerTypes<Q extends PromptSession> =
+export type AnswerTypes<Q extends QuestionCollection> =
   Q extends ReadonlyArray<Question & { name: string }>
     ? { [K in Q[number] as K['name']]: AnswerType<K> }
     : Q extends { [key: string]: Question }
@@ -42,7 +42,7 @@ export type AnswerTypes<Q extends PromptSession> =
  * @returns The generator context updated with the prompt results
  */
 export const prompt =
-  <C extends PinionContext, Q extends PromptSession = PromptSession>(prompts: Callable<Q, C>) =>
+  <C extends PinionContext, Q extends QuestionCollection = QuestionCollection>(prompts: Callable<Q, C>) =>
   async (ctx: C) => {
     const answers = await ctx.pinion.prompt(await getCallable(prompts, ctx))
     const result = {

@@ -54,16 +54,16 @@
     "access": "public"
   },
   "dependencies": {
-    "@types/inquirer": "^9.0.9",
-    "chalk": "^5.6.2",
-    "commander": "^15.0.0",
-    "inquirer": "^14.0.2",
-    "tsx": "^4.22.4"
+    "@types/inquirer": "^9.0.7",
+    "chalk": "^5.4.1",
+    "commander": "^13.0.0",
+    "inquirer": "^9.3.2",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "shx": "^0.4.0",
-    "typescript": "^6.0.3"
+    "@types/node": "^22.10.2",
+    "shx": "^0.3.4",
+    "typescript": "^5.7.2"
   },
   "gitHead": "a7580c163eaf4a0c38e7e0784d5e8785cdea6416"
 }
