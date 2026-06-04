@@ -1,7 +1,7 @@
 {
   "name": "@featherscloud/pinion",
   "description": "A fast and typesafe code generator",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "homepage": "https://feathersjs.com",
   "main": "lib/index.js",
   "type": "module",
