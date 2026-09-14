@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-describe('@feathersdev/pinion/utils', () => {
+describe('@featherscloud/pinion/utils', () => {
   it('listFiles with extension', async () => {
     const files = await listFiles(path.join(__dirname, 'templates'), '.tpl.ts')
 

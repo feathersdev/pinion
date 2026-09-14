@@ -23,7 +23,7 @@ const captureLog = async (run: () => Promise<unknown>) => {
   return output.join('\n')
 }
 
-describe('@feathersdev/pinion/cli', () => {
+describe('@featherscloud/pinion/cli', () => {
   it('runs the CLI with a generator and command line arguments', async () => {
     const ctx = await cli(['packages/pinion/test/templates/cli.ts', '--name', 'testing'])
 
