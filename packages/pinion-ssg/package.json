@@ -1,0 +1,65 @@
+{
+  "name": "@featherscloud/pinion-ssg",
+  "description": "A static site generator built with Pinion",
+  "version": "0.1.0",
+  "homepage": "https://feathersjs.com",
+  "main": "lib/index.js",
+  "type": "module",
+  "keywords": [
+    "pinion",
+    "ssg",
+    "static site generator",
+    "markdown"
+  ],
+  "license": "MIT",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/daffl"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/feathersdev/pinion.git"
+  },
+  "author": {
+    "name": "Feathers Cloud Inc.",
+    "email": "hello@feathers.cloud",
+    "url": "https://feathers.cloud"
+  },
+  "contributors": [],
+  "bugs": {
+    "url": "https://github.com/feathersdev/pinion/issues"
+  },
+  "engines": {
+    "node": ">= 22.18"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "src/**",
+    "lib/**",
+    "*.d.ts",
+    "*.js"
+  ],
+  "scripts": {
+    "prepublish": "npm run compile",
+    "compile": "shx rm -rf lib/ && tsc"
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@featherscloud/pinion": "^0.5.7",
+    "markdown-it": "^15.0.2",
+    "shiki": "^4.4.3",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "shx": "^0.4.0",
+    "typescript": "^7.0.2"
+  }
+}
