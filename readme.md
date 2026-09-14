@@ -11,16 +11,15 @@ Pinion is a task runner and scaffolding tool that lets you create code generator
 
 Install Pinion into your project via:
 
-```
+```sh
 npm install @featherscloud/pinion --save-dev
 ```
 
-Then create your first generator file e.g. in `generators/readme.tpl.ts` like this:
+Then create a generator file e.g. in `generators/readme.tpl.ts` like this:
 
 ```ts
-import { PinionContext, toFile, renderTemplate } from '@featherscloud/pinion'
+import { type PinionContext, toFile, renderTemplate } from '@featherscloud/pinion'
 
-// A template for a markdown Readme file
 const readme = () => `
 # Hello world
 
@@ -31,19 +30,14 @@ Copyright (c) ${new Date().getFullYear()}
 
 export const generate = (init: PinionContext) =>
   Promise.resolve(init)
-    // Render the readme template
     .then(renderTemplate(readme, toFile('readme.md')))
 ```
 
-Then run
-
-```
-npx pinion generators/readme.tpl.ts
-```
+Then run it with `npx pinion generators/readme.tpl.ts`.
 
 ## Documentation
 
-Head over to the [Pinion documentation](https://feathers.cloud/pinion) for the full documentation.
+The full documentation can be found in the [package readme](./packages/pinion/readme.md).
 
 ## License
 

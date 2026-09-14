@@ -1,4 +1,4 @@
-# @featherscloud/pinion
+# Pinion
 
 [![CI](https://github.com/feathershq/pinion/actions/workflows/nodejs.yml/badge.svg)](https://github.com/feathershq/pinion/actions/workflows/nodejs.yml)
 [![Download Status](https://img.shields.io/npm/dm/@featherscloud/pinion.svg?style=flat-square)](https://www.npmjs.com/package/@featherscloud/pinion)
@@ -7,20 +7,59 @@
 
 Pinion is a task runner and scaffolding tool that lets you create code generators for any language. Using TypeScript, it gives you full flexibility over what you can do and provides typesafe templating out-of-the box.
 
+## Table of contents
+
+- [Quick start](#quick-start)
+  - [Asking questions](#asking-questions)
+- [Generators](#generators)
+  - [Context](#context)
+  - [Defining Context](#defining-context)
+  - [Tasks](#tasks)
+- [Templates and Files](#templates-and-files)
+  - [File pointers](#file-pointers)
+  - [Templating](#templating)
+  - [Injecting](#injecting)
+- [User Input](#user-input)
+  - [Prompting](#prompting)
+  - [CLI arguments](#cli-arguments)
+- [Composability](#composability)
+  - [Running other generators](#running-other-generators)
+  - [Embeddability](#embeddability)
+  - [Testing](#testing)
+  - [Reusable tasks](#reusable-tasks)
+  - [The `pinion` property](#the-pinion-property)
+- [API reference](#api-reference)
+  - [Tasks](#tasks-1)
+  - [File helpers](#file-helpers)
+  - [renderTemplate](#rendertemplate)
+  - [when](#when)
+  - [inject](#inject)
+  - [copyFiles](#copyfiles)
+  - [writeJSON](#writejson)
+  - [mergeJSON](#mergejson)
+  - [loadJSON](#loadjson)
+  - [exec](#exec)
+  - [runGenerators](#rungenerators)
+  - [runGenerator](#rungenerator)
+  - [getContext](#getcontext)
+- [Why Pinion?](#why-pinion)
+- [License](#license)
+
 ## Quick start
 
 Install Pinion into your project via:
 
-```
+```sh
 npm install @featherscloud/pinion --save-dev
 ```
 
-Then create your first generator file e.g. in `generators/readme.tpl.ts` like this:
+While generators are written in TypeScript your project can use any programming language. For projects without a `package.json` run `npm init --yes` first.
+
+A Pinion generator is a file with a `generate` export that takes a context and returns a Promise with that context. Create your first generator in `generators/readme.tpl.ts`:
 
 ```ts
-import { PinionContext, toFile, renderTemplate } from '@featherscloud/pinion'
+import { type PinionContext, toFile, renderTemplate } from '@featherscloud/pinion'
 
-// A template for a markdown Readme file
 const readme = () => `
 # Hello world
 
@@ -30,20 +69,735 @@ Copyright (c) ${new Date().getFullYear()}
 `
 
 export const generate = (init: PinionContext) =>
-  Promise.resolve(init)
-    // Render the readme template
-    .then(renderTemplate(readme, toFile('readme.md')))
+  Promise.resolve(init).then(renderTemplate(readme, toFile('readme.md')))
 ```
 
-Then run
+Then run:
 
-```
+```sh
 npx pinion generators/readme.tpl.ts
 ```
 
-## Documentation
+This writes the `readme.md` file to the current directory.
 
-Head over to the [Pinion documentation](https://feathers.cloud/pinion) for the full documentation.
+### Asking questions
+
+For interactive prompts, install a prompt library like [Inquirer](https://github.com/SBoudrias/Inquirer.js):
+
+```sh
+npm install @inquirer/prompts --save-dev
+```
+
+Prompts are plain async functions that return the answer. Await them in a custom `.then` task and return an expanded context:
+
+```ts
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  name: string
+  description: string
+}
+
+const readme = ({ name, description }: Context) => `# ${name}
+
+> ${description}
+`
+
+export function generate(init: Context) {
+  return Promise.resolve(init)
+    .then(async (context) => {
+      const name = await input({ message: 'What is the name of your app?' })
+      const description = await input({ message: 'Write a short description' })
+
+      return { ...context, name, description }
+    })
+    .then(renderTemplate(readme, toFile('readme.md')))
+}
+```
+
+If a file already exists, the generator asks before overwriting it. See [User Input](#user-input) for more on prompting and command line arguments.
+
+## Generators
+
+A Pinion generator is any file with a `generate` export that takes a context and returns a Promise with that context:
+
+```ts
+// generators/empty.tpl.ts
+import type { PinionContext } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {}
+
+export const generate = (init: Context) => Promise.resolve(init)
+```
+
+The steps in a generator are put together in a Promise chain (`Promise.resolve(init).then(step1).then(step2)`). Each step in the chain is called a Task.
+
+### Context
+
+The `context` object is passed to each task. The `Context` interface defines the types used in tasks and templates and always extends `PinionContext`:
+
+```ts
+import type { PinionContext } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  // ...
+}
+```
+
+`PinionContext` provides:
+
+```ts
+export interface PinionContext {
+  cwd: string // The current working directory
+  argv: string[] // The command line arguments
+  pinion: Configuration
+}
+```
+
+For details on the `pinion` configuration see [The `pinion` property](#the-pinion-property).
+
+### Defining Context
+
+Add a property by defining it in the `Context` interface and adding it to the context somewhere in `generate`:
+
+```ts
+interface Context extends PinionContext {
+  year: number
+}
+
+export function generate(init: Context) {
+  return (
+    Promise.resolve(init)
+      .then((context) => ({
+        ...context,
+        year: new Date().getFullYear()
+      }))
+      // The template receives the updated context
+      .then(renderTemplate(({ year }: Context) => `Copyright (c) ${year}`, toFile('readme.md')))
+  )
+}
+```
+
+To reuse a function across generators, export it from a `.ts` file and import it like any other TypeScript function.
+
+### Tasks
+
+A task is any step in the `.then` chain. Building generators from tasks keeps them testable and embeddable plain functions:
+
+```ts
+// generators/tasks.tpl.ts
+import { input } from '@inquirer/prompts'
+import { type PinionContext } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  message: string
+  name: string
+}
+
+export function generate(init: Context) {
+  return Promise.resolve(init)
+    .then((context) => ({
+      // Returning a new object avoids unintended side effects
+      ...context,
+      message: 'Updated context from task 1'
+    }))
+    .then(async (context) => {
+      context.pinion.logger.log(`context.message is: "${context.message}"`)
+
+      const name = await input({ message: 'What is the name of your app?' })
+
+      return { ...context, name }
+    })
+}
+```
+
+> A custom `.then` handler must always return the `context`. If you modify the context, return a new object.
+
+## Templates and Files
+
+Templates are plain TypeScript, so they're typed and compiled with the rest of the generator and support the entire JavaScript ecosystem (like [Lodash](https://lodash.com/)) as helpers — no separate templating language needed.
+
+### File pointers
+
+- `file(...parts|context => parts)` - A generic pointer to a file like `file('readme.md')` or `file(context => [context.docsPath, 'readme.md'])`
+- `fromFile(...parts|context => parts)` - Like `file` but makes sure that the file already exists
+- `toFile(...parts|context => parts)` - Like `file` but creates the file including missing directories if it does not exist
+
+File names can be put together dynamically based on the context:
+
+```ts
+// generators/readme.tpl.ts
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  name: string
+  docsPath: string
+}
+
+export function generate(init: Context) {
+  return Promise.resolve(init)
+    .then(async (context) => {
+      const name = await input({ message: 'What is the name of your app?' })
+      const docsPath = await input({
+        message: 'Where should the documentation live?',
+        default: 'docs'
+      })
+
+      return { ...context, name, docsPath }
+    })
+    .then(
+      renderTemplate(
+        ({ name }: Context) => `# ${name}`,
+        toFile(({ docsPath }) => [docsPath, 'readme.md'])
+      )
+    )
+}
+```
+
+### Templating
+
+A template is simply a TypeScript template string (or any function returning a string) and can be composed from separate functions:
+
+```ts
+// generators/readme.tpl.ts
+import { upperFirst } from 'lodash'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  name: string
+}
+
+const copyright = () => `Copyright (c) ${new Date().getFullYear()}`
+
+const readme = ({ name }: Context) => `# Hello ${upperFirst(name)}
+
+${copyright()}
+`
+
+export function generate(init: Context) {
+  return Promise.resolve(init)
+    .then((context) => ({ ...context, name: 'david' }))
+    .then(renderTemplate(readme, toFile('readme.md')))
+}
+```
+
+> Any module used in a generator needs to be installed as a dependency. If you are not using it in your production project, it can be installed as a development dependency.
+
+### Injecting
+
+Text and code can be injected into existing files with the `inject` task — useful for wiring up newly generated components, middleware etc. The available injection points are:
+
+- `before(text|context => text)` inject before the first line that contains `text`
+- `after(text|context => text)` inject after the first line that contains `text`
+- `prepend()` inject at the beginning of the file
+- `append()` inject at the end of the file
+
+The following generates an Express middleware, imports and registers it in `src/app.ts`:
+
+```ts
+// generators/middleware.tpl.ts
+import { input } from '@inquirer/prompts'
+import { type PinionContext, after, inject, prepend, renderTemplate, toFile } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  name: string
+}
+
+const middlewareTemplate = ({ name }: Context) =>
+  `import type { Request, Response, NextFunction } from 'express'
+
+export const ${name} = (req: Request, res: Response, next: NextFunction) => {
+  console.log(\`Hello from ${name} middleware\`)
+
+  next()
+}`
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init)
+    .then(async (context) => ({
+      ...context,
+      name: await input({ message: 'What is the name of your middleware?' })
+    }))
+    .then(
+      renderTemplate(
+        middlewareTemplate,
+        toFile(({ name }) => ['src', 'middleware', `${name}.ts`])
+      )
+    )
+    .then(
+      inject(
+        ({ name }: Context) => `import { ${name} } from './middleware/${name}.js'`,
+        prepend(),
+        toFile('src', 'app.ts')
+      )
+    )
+    .then(
+      inject(
+        ({ name }: Context) => `app.use('/${name}', ${name})`,
+        after('const app = express()'),
+        toFile('src', 'app.ts')
+      )
+    )
+}
+```
+
+## User Input
+
+### Prompting
+
+[Inquirer](https://github.com/SBoudrias/Inquirer.js) is the recommended prompt library (`npm install @inquirer/prompts --save-dev`). Each prompt takes a configuration object and returns a promise with the answer. The available prompts are:
+
+| Prompt     | Description                                              |
+| ---------- | -------------------------------------------------------- |
+| `input`    | Free text input                                          |
+| `number`   | Like `input` with built-in number validation             |
+| `confirm`  | Yes/no question, returns a boolean                       |
+| `select`   | Choose one from a list                                   |
+| `checkbox` | Choose multiple from a list                              |
+| `rawlist`  | Choose from a numbered list                              |
+| `expand`   | Collapsed list that expands on key press                 |
+| `search`   | Searchable, filterable list                              |
+| `password` | Input hidden from the terminal                           |
+| `editor`   | Launches the user's preferred editor on a temporary file |
+
+A custom `.then` task can await any number of prompts and return an expanded context. Conditions like "only ask if the value is not already set" (e.g. from a command line argument or in an automated test) are plain JavaScript:
+
+```ts
+// generators/readme.tpl.ts
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
+
+export interface Context extends PinionContext {
+  name: string
+  description: string
+}
+
+export function generate(init: Context) {
+  return Promise.resolve(init)
+    .then(async (context) => {
+      // Only ask if `name` or `description` are not passed
+      const name = context.name || (await input({ message: 'What is the name of your app?' }))
+      const description = context.description || (await input({ message: 'Write a short description' }))
+
+      return { ...context, name, description }
+    })
+    .then(renderTemplate(readme, toFile('readme.md')))
+}
+
+// The template uses Context variables
+const readme = ({ name, description }: Context) => `# ${name}
+
+> ${description}
+`
+```
+
+### CLI arguments
+
+Arguments passed to a generator are available as `context.argv` and include everything after the generator filename. Running
+
+```sh
+npx pinion generators/readme.tpl.ts --description hello something
+```
+
+sets `context.argv` to `['--description', 'hello', 'something']`. They can be parsed manually or with a CLI parsing library like [commander](https://github.com/tj/commander.js):
+
+```ts
+// generators/readme.tpl.ts
+import { input } from '@inquirer/prompts'
+import { Command } from 'commander'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
+
+const program = new Command()
+  .description('A readme generator')
+  .option('-n, --name <name>', 'Name of your app')
+  .option('-d, --description <description>', 'The description for your app')
+
+export function generate(init: Context) {
+  return Promise.resolve(init)
+    .then((context) => {
+      // `context.argv` only contains the user arguments (like `from: 'user'`)
+      program.parse(context.argv, { from: 'user' })
+
+      return { ...context, ...program.opts() }
+    })
+    .then(async (context) => {
+      // Skip prompting for values passed on the command line
+      const name = context.name || (await input({ message: 'What is the name of your app?' }))
+      const description = context.description || (await input({ message: 'Write a short description' }))
+
+      return { ...context, name, description }
+    })
+    .then(renderTemplate(readme, toFile('readme.md')))
+}
+```
+
+## Composability
+
+### Running other generators
+
+Another generator can be imported and run like any other task:
+
+```ts
+// generators/app.tpl.ts
+import { type PinionContext, exec } from '@featherscloud/pinion'
+import { generate as generateReadme } from './readme.tpl.ts'
+
+export function generate(init: PinionContext) {
+  return (
+    Promise.resolve(init)
+      // Initialize a new NodeJS project
+      .then(exec('npm', ['init', '--yes']))
+      // Generate the readme
+      .then(generateReadme)
+  )
+}
+```
+
+The `runGenerators` task runs all `.tpl.ts` generators in a folder alphabetically with the current context:
+
+```ts
+// generators/app.tpl.ts
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
+import { type PinionContext, runGenerators } from '@featherscloud/pinion'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(runGenerators(__dirname, 'app'))
+}
+```
+
+### Embeddability
+
+Since a generator is just a function, it can be used programmatically e.g. in your own CLI tools by importing it, initializing a context and calling it:
+
+```ts
+import { getContext } from '@featherscloud/pinion'
+import { type Context, generate } from './my-generator.tpl.ts'
+
+const context = getContext({
+  // Additional initial context values
+}) as Context
+
+await generate(context)
+```
+
+### Testing
+
+Tests initialize the context — usually with a temporary path — and pass all context variables needed to skip user prompts:
+
+```ts
+// tests/readme.tpl.test.ts
+import { describe, it } from 'node:test'
+import assert from 'node:assert'
+import path from 'node:path'
+import os from 'node:os'
+import fs from 'node:fs/promises'
+import { getContext } from '@featherscloud/pinion'
+import { type Context, generate } from '../generators/readme.tpl.ts'
+
+describe('readme generator tests', () => {
+  it('generates a readme with name and description', async () => {
+    // Create a temporary directory and initialize the context with all values
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'pinion-test-'))
+    const init = getContext<Context>({
+      name: 'My test app',
+      description: 'This is the description for the test app',
+      cwd
+    })
+    // The final context can be used to make assertions about what ran
+    const context = await generate(init)
+
+    assert.strictEqual(context.name, 'My test app')
+    assert.ok(fs.stat(path.join(cwd, 'readme.md')))
+  })
+})
+```
+
+Since generators are plain TypeScript files, the test runs with the Node.js test runner directly:
+
+```sh
+node --test test/readme.tpl.test.ts
+```
+
+### Reusable tasks
+
+Reusable tasks take parameters that are either a plain value or a callback based on the context:
+
+```ts
+import { type Callable, type PinionContext, getCallable, toFile } from '@featherscloud/pinion'
+
+export function sayHello<C extends PinionContext>(
+  nameParam: Callable<string, C>,
+  fileParam: Callable<string, C>
+) {
+  return async (ctx: C) => {
+    const name = await getCallable(nameParam, ctx)
+    const fileName = await getCallable(fileParam, ctx)
+
+    console.log(`I may write your name "${name}" to file ${fileName}`)
+
+    return ctx
+  }
+}
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(sayHello('David', toFile('hello', 'dave.md')))
+}
+```
+
+### The `pinion` property
+
+When you extend `PinionContext`, your `Context`'s `pinion` property will contain the following properties:
+
+```ts
+export interface Configuration {
+  /**
+   * The current working directory
+   */
+  cwd: string
+  /**
+   * The logger instance, writing information to the console
+   */
+  logger: Logger
+  /*
+   * Whether to force overwriting existing files by default
+   */
+  force: boolean
+  /**
+   * Trace messages of all executed generators
+   */
+  trace: PinionTrace[]
+  /**
+   * A function to execute a command
+   *
+   * @param command The command to execute
+   * @param args The command arguments
+   * @param options The NodeJS spawn options
+   * @returns The exit code of the command
+   */
+  exec: (command: string, args: string[], options?: SpawnOptions) => Promise<number>
+}
+```
+
+These properties can be used inside of any task.
+
+## API reference
+
+Pinion has a small API with only a few tasks necessary to build powerful generators and CLI tools. Everything below is exported from `@featherscloud/pinion`.
+
+Most tasks take their arguments in two forms: either as plain values like `renderTemplate('This is the template string')` or functions (or asynchronous functions) that get called with the current `context` and return the value, e.g.
+
+```ts
+renderTemplate<Context>((context) => `This is a dynamic template for ${context.name}`)
+```
+
+### Tasks
+
+| Task             | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `renderTemplate` | Render a template string to a file                     |
+| `inject`         | Inject text into an existing file                      |
+| `when`           | Conditionally run a task                               |
+| `exec`           | Run a shell command                                    |
+| `copyFiles`      | Recursively copy files from one location to another    |
+| `loadJSON`       | Load a JSON file and merge its data into the context   |
+| `writeJSON`      | Write JSON data to a file                              |
+| `mergeJSON`      | Merge new data into an existing JSON file              |
+| `runGenerators`  | Run all `*.tpl.ts` / `*.tpl.js` generators in a folder |
+| `runGenerator`   | Run a single generator file                            |
+
+### File helpers
+
+| Helper     | Description                                                               |
+| ---------- | ------------------------------------------------------------------------- |
+| `file`     | Points to a filename, usually within the current working directory        |
+| `toFile`   | Like `file` but will create the file and all folders that don't exist yet |
+| `fromFile` | Like `file` but makes sure that the file already exists                   |
+
+File names can be put together dynamically by passing a context callback: `toFile(({ name }) => ['src', 'middleware', `${name}.ts`])`.
+
+### renderTemplate
+
+`renderTemplate(text|context => text, toFile, writeOptions)` renders a string to a target file. `writeOptions` can be `{ force: true }` to skip prompting if an existing file should be overwritten.
+
+```ts
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(
+    renderTemplate((context) => `A dynamic template for ${context.name}`, toFile('readme.md'))
+  )
+}
+```
+
+### when
+
+`when(boolean|context => boolean, operation)` evaluates a condition and runs the task if it returns true.
+
+```ts
+import { type PinionContext, renderTemplate, toFile, when } from '@featherscloud/pinion'
+
+interface Context extends PinionContext {
+  name: string
+}
+
+export function generate(init: Context) {
+  return Promise.resolve(init).then(
+    when<Context>(
+      ({ name }) => name === 'David',
+      renderTemplate("I'm afraid I can't do that Dave", toFile('greeting.md'))
+    )
+  )
+}
+```
+
+### inject
+
+`inject(text|context => text, location, toFile)` injects a template at a specific location into an existing file. The location functions are:
+
+- `before(text|context => text)` inject at the line before `text`
+- `after(text|context => text)` inject at the line after `text`
+- `prepend()` inject at the beginning of the file
+- `append()` inject at the end of the file
+
+```ts
+import { type PinionContext, append, before, inject, prepend, toFile } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init)
+    .then(inject('Injected before copyright notice', before('Copyright (c)'), toFile('readme.md')))
+    .then(inject('Appended hello world', append(), toFile('readme.md')))
+}
+```
+
+### copyFiles
+
+`copyFiles(fromFile, toFile, options)` recursively copies all files from a location to a destination. It will prompt to overwrite if a file already exists. `options` can be `{ force: true }` to skip prompting if an existing file should be overwritten.
+
+```ts
+import { type PinionContext, copyFiles, fromFile, toFile } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(copyFiles(fromFile(__dirname, 'static'), toFile('.')))
+}
+```
+
+### writeJSON
+
+`writeJSON(data|context => data, toFile, writeOptions)` writes JSON data to a file. `writeOptions` can be `{ force: true }` to skip prompting if an existing file should be overwritten.
+
+```ts
+import { type PinionContext, toFile, writeJSON } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(writeJSON({ description: 'Something' }, toFile('package.json')))
+}
+```
+
+### mergeJSON
+
+`mergeJSON(data|context => data, toFile, writeOptions)` merges new data into an existing JSON file. It will prompt to overwrite if an existing file should be overwritten unless `{ force: true }` is passed.
+
+### loadJSON
+
+`loadJSON(fromFile, converter, fallback?)` loads a JSON file, parses it and extends the `context` with the data returned by `converter`. If the file cannot be read or parsed and a `fallback` is given, the fallback data is used instead.
+
+```ts
+import type { PackageJson } from 'type-fest'
+import { type PinionContext, fromFile, loadJSON, toFile, writeJSON } from '@featherscloud/pinion'
+
+// The main types of your generator
+export interface Context extends PinionContext {
+  package: PackageJson
+}
+
+export function generate(init: Context) {
+  return (
+    Promise.resolve(init)
+      // Load package.json, fall back to an empty object if it doesn't exist
+      .then(loadJSON(fromFile('package.json'), (package) => ({ package }), {}))
+      // Merge existing package.json and write an updated description
+      .then(
+        writeJSON<Context>(
+          ({ package }) => ({
+            ...package,
+            description: 'Overwritten description'
+          }),
+          toFile('package.json')
+        )
+      )
+  )
+}
+```
+
+### exec
+
+`exec(command|context => command, args|context => args)` runs a command with command line arguments in the current working directory. It will error if the command returns an error exit code.
+
+```ts
+import { type PinionContext, exec } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(exec('npm', ['install', '@feathersjs/feathers']))
+}
+```
+
+### runGenerators
+
+`runGenerators(...pathParts)` runs all `*.tpl.ts` or `*.tpl.js` generators in the given path alphabetically in sequence, passing the current context.
+
+```ts
+import { type PinionContext, runGenerators } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(runGenerators(__dirname, 'templates'))
+}
+```
+
+### runGenerator
+
+`runGenerator(...pathParts)` runs a single generator file (any `.ts` or `.js` file with a `generate` export) and merges its returned context into the current context.
+
+```ts
+import { type PinionContext, runGenerator } from '@featherscloud/pinion'
+
+export function generate(init: PinionContext) {
+  return Promise.resolve(init).then(runGenerator(__dirname, 'readme.tpl.ts'))
+}
+```
+
+### getContext
+
+`getContext(initialCtx, initialConfig?)` returns a new Pinion context, initialized with the given context values and configuration. It is used for embedding and testing generators programmatically (see [Embeddability](#embeddability)).
+
+## Why Pinion?
+
+We have maintained CLI tooling for large internal projects and well-used open-source projects for many years. During that time, we tried all of the generators, looking for a flexible option to handle both internal projects and npm-published CLIs.
+
+Since a tool that covered all our requirements did not exist, we built Pinion to be
+
+- **Typesafe** - Generators and templates should be typesafe. Type safety helps avoid runtime errors.
+- **Functional** - A generator should just be a function that performs its steps and returns with the information from those steps. This approach keeps everything robust yet flexible. It's React, but for generating code.
+- **Scalable** - Generator logic and templates should be kept together but flexible enough to organize in a way that best suits your needs. Get started with a single file and scale as your project grows.
+- **Flexible** - Start with Pinion's small API and go from there. By using just plain TypeScript you get full flexibility over what your generators can do.
+- **Composable** - Calling another generator is just calling another function. This makes them testable, composable and reusable.
+- **Fast** - Generators can be pre-compiled to ship e.g. as an npm package or your project's CLI tool. Pre-compiling templates means there's no interpreting templates at runtime or loading additional libraries. Only what you import into your generators will be loaded.
+
+Below is a short and somewhat biased comparison between Pinion, [PlopJS](https://plopjs.com/), [Yeoman](https://yeoman.io/) and [Hygen](http://www.hygen.io/):
+
+| Feature           | Pinion     | Plop       | Yeoman                | Hygen    |
+| ----------------- | ---------- | ---------- | --------------------- | -------- |
+| Template Language | TypeScript | Handlebars | Handlebars, EJS, Jade | EJS      |
+| Pattern           | Functional | Imperative | Object Oriented       | Yaml/EJS |
+| Typesafe          | ✅         | ❌         | ❌                    | ❌       |
+| Local templates   | ✅         | ✅         | ❌                    | ✅       |
+| Embeddable        | ✅         | ✅         | ✅                    | ❌       |
+| Composable        | ✅         | ❌         | ✅                    | ❌       |
+| Pre-compilation   | ✅         | ❌         | ❌                    | ❌       |
 
 ## License
 

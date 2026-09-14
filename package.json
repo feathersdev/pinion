@@ -4,7 +4,7 @@
   "homepage": "http://feathersjs.com",
   "repository": {
     "type": "git",
-    "url": "git://github.com/feathershq/pinion.git"
+    "url": "git://github.com/feathersdev/pinion.git"
   },
   "author": {
     "name": "Feathers Cloud Inc.",
@@ -18,10 +18,10 @@
     "url": "https://github.com/sponsors/daffl"
   },
   "bugs": {
-    "url": "https://github.com/feathershq/pinion/issues"
+    "url": "https://github.com/feathersdev/pinion/issues"
   },
   "engines": {
-    "node": ">= 18"
+    "node": ">= 22.18"
   },
   "workspaces": [
     "packages/*"
@@ -30,27 +30,18 @@
     "publish": "lerna publish && npm run update-changelog",
     "publish:prerelease": "lerna publish prerelease --preid pre --pre-dist-tag pre --dist-tag pre && npm run update-changelog",
     "update-changelog": "git commit -am \"chore: Update changelog\" && git push origin",
-    "prettier": "npx prettier \"packages/{,!(node_modules)/**/(src|test)/**/}*.ts\" --write",
-    "eslint": "eslint \"packages/**/*.ts\" --fix",
-    "lint": "npm run prettier && npm run eslint",
-    "update-dependencies": "ncu -u -x eslint && lerna exec -- ncu -u",
+    "lint": "npx oxlint packages --fix",
+    "update-dependencies": "ncu -u && lerna exec -- ncu -u",
     "dev": "vitest watch --coverage",
     "vitest": "vitest run --coverage",
     "test": "npm run lint && npm run compile --workspaces && npm run vitest"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.19.0",
-    "@typescript-eslint/parser": "^8.19.0",
-    "@vitest/coverage-v8": "^2.1.8",
-    "eslint": "^8.57.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^7.2.1",
-    "lerna": "^8.1.9",
-    "npm-check-updates": "^17.1.13",
-    "prettier": "^3.4.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "@vitest/coverage-v8": "^5.0.0",
+    "lerna": "^10.0.1",
+    "npm-check-updates": "^23.1.0",
+    "oxlint": "^1.83.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   }
 }

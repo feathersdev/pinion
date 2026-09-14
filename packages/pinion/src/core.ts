@@ -1,11 +1,7 @@
 import { spawn, SpawnOptions } from 'child_process'
-import inquirer from 'inquirer'
-import chalk from 'chalk'
+import { styleText } from 'util'
 
 import { loadModule } from './utils.js'
-
-const { prompt } = inquirer
-const { yellow, red, blue } = chalk
 
 export interface Logger {
   warn: (msg: string) => void
@@ -19,11 +15,11 @@ export class BasicLogger implements Logger {
   previousNotice: string = ''
 
   warn(msg: string) {
-    this.logger.log(yellow(`    ${msg}`))
+    this.logger.log(styleText('yellow', `    ${msg}`))
   }
 
   error(msg: string) {
-    this.logger.log(red(msg))
+    this.logger.log(styleText('red', msg))
   }
 
   log(msg: string) {
@@ -32,7 +28,7 @@ export class BasicLogger implements Logger {
 
   notice(msg: string) {
     if (this.previousNotice !== msg) {
-      this.logger.log(blue(`    ${msg}`))
+      this.logger.log(styleText('blue', `    ${msg}`))
       this.previousNotice = msg
     }
   }
@@ -57,10 +53,6 @@ export type Configuration = {
    * Whether to force overwriting existing files by default
    */
   force: boolean
-  /**
-   * The prompt instance, used to ask questions to the user
-   */
-  prompt: typeof prompt
   /**
    * Trace messages of all executed generators
    */
@@ -113,7 +105,6 @@ export const mapCallables = <X, C extends PinionContext>(callables: Callable<X, 
  * @returns
  */
 export const getConfig = (initialConfig?: Partial<Configuration>): Configuration => ({
-  prompt,
   logger: new BasicLogger(),
   cwd: process.cwd(),
   force: false,

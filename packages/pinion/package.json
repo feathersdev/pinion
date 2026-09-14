@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/feathershq/pinion.git"
+    "url": "git://github.com/feathersdev/pinion.git"
   },
   "author": {
     "name": "Feathers contributors",
@@ -29,10 +29,10 @@
   },
   "contributors": [],
   "bugs": {
-    "url": "https://github.com/feathershq/pinion/issues"
+    "url": "https://github.com/feathersdev/pinion/issues"
   },
   "engines": {
-    "node": ">= 20"
+    "node": ">= 22.18"
   },
   "files": [
     "CHANGELOG.md",
@@ -53,17 +53,11 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@types/inquirer": "^9.0.7",
-    "chalk": "^5.4.1",
-    "commander": "^13.0.0",
-    "inquirer": "^9.3.2",
-    "tsx": "^4.19.2"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "shx": "^0.3.4",
-    "typescript": "^5.7.2"
+    "@types/node": "^26.5.1",
+    "shx": "^0.4.0",
+    "typescript": "^7.0.2"
   },
   "gitHead": "a7580c163eaf4a0c38e7e0784d5e8785cdea6416"
 }
