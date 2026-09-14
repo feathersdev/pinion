@@ -1,11 +1,10 @@
 import { spawn, SpawnOptions } from 'child_process'
 import inquirer from 'inquirer'
-import chalk from 'chalk'
+import { styleText } from 'node:util'
 
 import { loadModule } from './utils.js'
 
 const { prompt } = inquirer
-const { yellow, red, blue } = chalk
 
 export interface Logger {
   warn: (msg: string) => void
@@ -19,11 +18,11 @@ export class BasicLogger implements Logger {
   previousNotice: string = ''
 
   warn(msg: string) {
-    this.logger.log(yellow(`    ${msg}`))
+    this.logger.log(styleText('yellow', `    ${msg}`))
   }
 
   error(msg: string) {
-    this.logger.log(red(msg))
+    this.logger.log(styleText('red', msg))
   }
 
   log(msg: string) {
@@ -32,7 +31,7 @@ export class BasicLogger implements Logger {
 
   notice(msg: string) {
     if (this.previousNotice !== msg) {
-      this.logger.log(blue(`    ${msg}`))
+      this.logger.log(styleText('blue', `    ${msg}`))
       this.previousNotice = msg
     }
   }

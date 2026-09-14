@@ -55,7 +55,6 @@
   },
   "dependencies": {
     "@types/inquirer": "^9.0.7",
-    "chalk": "^5.4.1",
     "commander": "^13.0.0",
     "inquirer": "^9.3.2"
   },

@@ -7,20 +7,11 @@
 
 Pinion is a task runner and scaffolding tool that lets you create code generators for any language. Using TypeScript, it gives you full flexibility over what you can do and provides typesafe templating out-of-the box.
 
-This document is the complete Pinion documentation. It assumes it may be read by an LLM (or a human) without access to any other resources.
-
-## Requirements and important constraints
-
-- Pinion requires **Node.js >= 22.18** (or >= 23.6). Generators written in TypeScript are run directly by Node.js using its built-in TypeScript type stripping. No extra loader or transpiler is needed.
-- Node type stripping only supports **erasable TypeScript syntax**: type annotations, interfaces, type aliases, generics, `import type` etc. are fine. **Enums, namespaces, parameter properties and legacy decorators are not supported** in generators.
-- Relative imports in generators must use **explicit file extensions**, e.g. `import { generate } from './other.tpl.ts'`. Extensionless imports (and `.js` specifiers pointing to `.ts` files) do not work.
-- Type-only imports must use the **`type` keyword** (e.g. `import { type PinionContext, prompt } from '@featherscloud/pinion'`), because Node does not know at runtime which imports are types.
-
 ## Quick start
 
 Install Pinion into your project via:
 
-```
+```sh
 npm install @featherscloud/pinion --save-dev
 ```
 
@@ -60,6 +51,12 @@ npx pinion generators/readme.tpl.ts
 Once you ran the command, you can find your `readme.md` file in the current directory.
 
 ### Asking questions
+
+Prompts 
+
+```sh
+npm install @inquirer/prompts --save-dev
+```
 
 Pinion comes with a `prompt` utility that works with your typed context. You can ask questions from the command line with the `prompt` task:
 
