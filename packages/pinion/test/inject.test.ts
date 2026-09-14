@@ -5,7 +5,7 @@ import { tmpdir, EOL } from 'os'
 import { join } from 'path'
 import { getContext, inject, before, after, prepend, append } from '../src/index.js'
 
-describe('@featherscloud/pinion/tasks/inject', () => {
+describe('@feathersdev/pinion/tasks/inject', () => {
   let cwd: string
 
   beforeEach(async () => {
