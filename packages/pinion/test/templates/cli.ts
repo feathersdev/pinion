@@ -1,14 +1,16 @@
-import { PinionContext, commander, Command } from '../../src/index.js'
+import { PinionContext } from '../../src/index.js'
 
 interface Context extends PinionContext {
   name: string
 }
 
-const program = new Command()
-  .description('A test command')
-  .option('-n, --name <name>', 'Name of your project')
-
 export const generate = (ctx: Context) =>
   Promise.resolve(ctx)
-    .then(commander(program))
+    .then((context) => {
+      // Parse `--name <value>` from the command line arguments
+      const nameFlagIndex = context.argv.indexOf('--name')
+      const name = nameFlagIndex !== -1 ? context.argv[nameFlagIndex + 1] : context.name
+
+      return { ...context, name }
+    })
     .then((ctx) => ({ ...ctx, noop: true }))

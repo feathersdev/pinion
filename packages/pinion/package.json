@@ -53,9 +53,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "commander": "^13.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.10.2",
     "shx": "^0.3.4",

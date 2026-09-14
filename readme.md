@@ -17,7 +17,7 @@ npm install @featherscloud/pinion --save-dev
 
 While generators are written in TypeScript your project can use any programming language. For projects without a `package.json` run `npm init --yes` first.
 
-Pinion ships without an interactive prompt library. For asking questions, install one like [Inquirer](https://github.com/SBoudrias/Inquirer.js) (e.g. `npm install @inquirer/prompts --save-dev`) and use it in your generators as shown in the [User Input](#user-input) section.
+Pinion ships without a library for interactive prompts or CLI argument parsing. For asking questions install something like [Inquirer](https://github.com/SBoudrias/Inquirer.js) (`npm install @inquirer/prompts --save-dev`), for command line arguments something like [commander](https://github.com/tj/commander.js) (`npm install commander --save-dev`) and use them in your generators as shown in the [User Input](#user-input) section.
 
 A Pinion generator has two ingredients:
 
@@ -504,11 +504,18 @@ The CLI arguments passed to a generator are available as `context.argv` and incl
 npx pinion generators/readme.ts --description hello something
 ```
 
-`context.argv` would be `['--description', 'hello', 'something']`. The list can be parsed manually and Pinion also ships with a `commander` task that uses the `commander` module to create command-line interfaces. The following example adds `--name` and `--description` command line arguments and skips prompting the user if they are passed:
+`context.argv` would be `['--description', 'hello', 'something']`. They can be parsed manually or with a CLI parsing library like [commander](https://github.com/tj/commander.js):
+
+```sh
+npm install commander --save-dev
+```
+
+The following example uses a commander program to add `--name` and `--description` command line arguments and skips prompting the user if they are passed:
 
 ```ts [generators/readme.tpl.ts]
 import { input } from '@inquirer/prompts'
-import { Command, type PinionContext, commander, renderTemplate, toFile } from '@featherscloud/pinion'
+import { Command } from 'commander'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
 
 const program = new Command()
   .description('A readme generator')
@@ -536,8 +543,13 @@ Copyright (c) ${new Date().getFullYear()}
 export function generate(init: Context) {
   return (
     Promise.resolve(init)
-      // Parse command line arguments
-      .then(commander(program))
+      .then((context) => {
+        // Parse the command line arguments and add the options to the context.
+        // `context.argv` only contains the user arguments (like `from: 'user'`)
+        program.parse(context.argv, { from: 'user' })
+
+        return { ...context, ...program.opts() }
+      })
       .then(async (context) => {
         // Only ask if `name` or `description` are not passed
         const name = context.name || (await input({ message: 'What is the name of your app?' }))
@@ -839,7 +851,6 @@ renderTemplate<Context>((context) => `This is a dynamic template for ${context.n
 
 | Task             | Description                                            |
 | ---------------- | ------------------------------------------------------ |
-| `commander`      | Parse command line arguments with a commander program  |
 | `renderTemplate` | Render a template string to a file                     |
 | `inject`         | Inject text into an existing file                      |
 | `when`           | Conditionally run a task                               |
@@ -851,7 +862,7 @@ renderTemplate<Context>((context) => `This is a dynamic template for ${context.n
 | `runGenerators`  | Run all `*.tpl.ts` / `*.tpl.js` generators in a folder |
 | `runGenerator`   | Run a single generator file                            |
 
-For user prompts install a prompt library like [Inquirer](https://github.com/SBoudrias/Inquirer.js) and use it in a custom `.then` task as shown in the [Prompting](#prompting) section.
+Pinion ships no tasks for user prompts or CLI argument parsing. Install a library like [Inquirer](https://github.com/SBoudrias/Inquirer.js) or [commander](https://github.com/tj/commander.js) and use it in a custom `.then` task as shown in the [User Input](#user-input) section.
 
 ### File helpers
 
@@ -862,30 +873,6 @@ For user prompts install a prompt library like [Inquirer](https://github.com/SBo
 | `fromFile` | Like `file` but makes sure that the file already exists                   |
 
 File names can be put together dynamically by passing a context callback: `toFile(({ name }) => ['src', 'middleware', `${name}.ts`])`.
-
-### commander
-
-`commander(program|context => program)` parses the generator command line arguments using a [commander](https://www.npmjs.com/package/commander) program and adds them to the context. The `Command` class is re-exported from `@featherscloud/pinion`.
-
-```ts
-import { Command, type PinionContext, commander } from '@featherscloud/pinion'
-
-interface Context extends PinionContext {
-  name: string
-}
-
-const program = new Command()
-  .description('My awesome generator')
-  .option('-n, --name <name>', 'Name of your project')
-
-export function generate(init: Context) {
-  return Promise.resolve(init)
-    .then(commander(program))
-    .then((context) => {
-      console.log(context.name)
-    })
-}
-```
 
 ### renderTemplate
 
