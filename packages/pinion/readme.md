@@ -18,7 +18,7 @@ npm install @featherscloud/pinion --save-dev
 Then create your first generator file e.g. in `generators/readme.tpl.ts` like this:
 
 ```ts
-import { PinionContext, toFile, renderTemplate } from '@featherscloud/pinion'
+import { type PinionContext, toFile, renderTemplate } from '@featherscloud/pinion'
 
 // A template for a markdown Readme file
 const readme = () => `

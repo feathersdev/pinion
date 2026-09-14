@@ -32,7 +32,7 @@
     "url": "https://github.com/feathershq/pinion/issues"
   },
   "engines": {
-    "node": ">= 20"
+    "node": ">= 22.18"
   },
   "files": [
     "CHANGELOG.md",
@@ -57,8 +57,7 @@
     "@types/inquirer": "^9.0.7",
     "chalk": "^5.4.1",
     "commander": "^13.0.0",
-    "inquirer": "^9.3.2",
-    "tsx": "^4.19.2"
+    "inquirer": "^9.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -3,10 +3,6 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { readdir } from 'fs/promises'
 
-let tsModule: any
-
-const tsRegister = async (mod = 'tsx') => (tsModule = tsModule || import(mod))
-
 const extensionCheck = /(\.ts|\.js)$/
 const getFileUrl = (file: string) => {
   let url = file
@@ -28,9 +24,12 @@ const getFileUrl = (file: string) => {
 
 export const loadModule = async (file: string) => {
   const fileName = getFileUrl(file)
+  const { typescript } = process.features
 
-  if (fileName.endsWith('.ts')) {
-    await tsRegister()
+  if (fileName.endsWith('.ts') && typescript !== 'strip' && typescript !== 'transform') {
+    throw new Error(
+      `Loading TypeScript generators requires native TypeScript support (Node.js >= 22.18, current version: ${process.version})`
+    )
   }
 
   return import(fileName)

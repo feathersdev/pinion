@@ -21,7 +21,7 @@
     "url": "https://github.com/feathershq/pinion/issues"
   },
   "engines": {
-    "node": ">= 18"
+    "node": ">= 22.18"
   },
   "workspaces": [
     "packages/*"
