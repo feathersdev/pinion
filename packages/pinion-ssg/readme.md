@@ -82,7 +82,7 @@ Renders all pages to HTML and writes them to the target folder. Options are:
 - `langs`: Additional languages to load for syntax highlighting
 - `markdownIt`: markdown-it constructor options
 - `plugins`: markdown-it plugins to register
-- `toc`: The general table of contents, available to layouts as `ctx.toc`
+- `toc`: The main table of contents, available to layouts as `ctx.toc` (only set when supplied)
 - `force`: Overwrite existing files (default: `true`, if `false` existing files are skipped)
 
 A layout template receives the rendered HTML, the page data and the context:
@@ -93,49 +93,70 @@ type Layout = (html: string, page: PageData, ctx: PinionContext) => string | Pro
 
 ## Tables of contents
 
-Headings in the rendered HTML get anchor `id` attributes automatically (GitHub-style slugs, duplicates suffixed with `-1`, `-2` etc.). Each page gets a nested table of contents and a title, so layouts can render navigation:
+There are two tables of contents, both using the same `TocItem` type:
 
-```ts
-type TocEntry = {
-  // The heading level (1-6)
-  level: number
-  // The heading text
-  text: string
-  // The anchor slug, also used as the heading `id`
-  slug: string
-  // Headings at deeper levels
-  children: TocEntry[]
-}
-```
+- `ctx.toc` — the main table of contents, supplied via the `toc` option
+- `page.toc` — generated from the page headings, nested based on the heading level
 
-The general table of contents can be supplied to `renderMarkdown` as a plain object. It is made available to layout templates as `ctx.toc` and supports nesting:
+Headings in the rendered HTML get anchor `id` attributes automatically (GitHub-style slugs, duplicates suffixed with `-1`, `-2` etc.), so page tables of contents can be used for navigation:
 
 ```ts
 type TocItem = {
-  // The title of the entry
+  // The entry title (the heading text for page tables of contents)
   title: string
-  // The route the entry links to
-  route?: string
+  // The path the entry links to (the anchor slug for page tables
+  // of contents, also used as the heading `id`)
+  path?: string
   // Nested entries
   children?: TocItem[]
 }
+```
 
+The main table of contents can be supplied to `renderMarkdown` as a plain object. It is made available to layout templates as `ctx.toc` and supports nesting:
+
+```ts
 renderMarkdown('public', {
   toc: [
     {
       title: 'Guides',
-      children: [{ title: 'Getting started', route: 'guides/getting-started.html' }]
+      children: [{ title: 'Getting started', path: 'guides/getting-started.html' }]
     },
-    { title: 'Home', route: 'index.html' }
+    { title: 'Home', path: 'index.html' }
   ],
   layout: (html, page, ctx) => `
     <nav>
       ${ctx.toc
-        .map((item) => `<a href="${item.route}">${item.title}</a>`)
+        .map((item) => `<a href="${item.path}">${item.title}</a>`)
         .join('')}
     </nav>
     <main>${html}</main>`
 })
 ```
 
-If no table of contents is supplied, a flat list is generated from the page titles and routes.
+## Search
+
+### writeSearchIndex(file, options)
+
+Writes a search index for all pages as a JSON file. The format is library agnostic and can be loaded client-side by search libraries like [MiniSearch](https://lucaong.github.io/minisearch/), [FlexSearch](https://github.com/nextapps-de/flexsearch), [lunr](https://lunrjs.com) or [Orama](https://orama.com):
+
+```ts
+Promise.resolve(ctx)
+  .then(loadMarkdown('site'))
+  .then(renderMarkdown('public'))
+  .then(writeSearchIndex('public/search.json'))
+```
+
+Each entry contains the page `title`, `path` and the plain `text` extracted from the rendered HTML:
+
+```json
+[
+  { "title": "Home", "path": "index.html", "text": "Home Some markdown with a link ." }
+]
+```
+
+Options are:
+
+- `converter`: Modify each entry, e.g. to add custom fields like categories or dates
+- `force`: Overwrite an existing file (default: `true`, if `false` an existing file is skipped)
+
+For very large sites, a chunked index produced by a dedicated tool like [Pagefind](https://pagefind.app) (run after the build with `pagefind --site public`) is a good alternative.

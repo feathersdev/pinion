@@ -13,6 +13,7 @@ It provides composable Pinion tasks (functions that take and return the generato
 - Read all markdown files in a folder
 - Render them to HTML using Pinion templates
 - Support syntax highlighting
+- Write a search index for the generated pages
 
 ## Dependencies
 
@@ -44,7 +45,7 @@ type PageData = {
   // (set by `renderMarkdown`)
   title: string
   // The nested table of contents (set by `renderMarkdown`)
-  toc: TocEntry[]
+  toc: TocItem[]
 }
 ```
 
@@ -54,18 +55,20 @@ Frontmatter is delimited by `---` fences at the beginning of a file and parsed w
 
 Headings (`h1`-`h6`) in the rendered HTML get `id` attributes automatically so table of contents entries can be used as links. Slugs are generated GitHub-style (lowercase, non-alphanumeric characters replaced by `-`, duplicates suffixed with `-1`, `-2` etc.).
 
-Each page gets a nested table of contents as `TocEntry[]`:
+There are two tables of contents, both using the same `TocItem` type:
+
+- `ctx.toc` — the main table of contents, only set when the `toc` option is supplied
+- `page.toc` — generated from the page headings, nested based on the heading level
 
 ```ts
-type TocEntry = {
-  // The heading level (1-6)
-  level: number
-  // The heading text
-  text: string
-  // The anchor slug, also used as the heading `id`
-  slug: string
-  // Headings at deeper levels
-  children: TocEntry[]
+type TocItem = {
+  // The entry title (the heading text for page tables of contents)
+  title: string
+  // The path the entry links to (the anchor slug for page tables
+  // of contents, also used as the heading `id`)
+  path?: string
+  // Nested entries
+  children?: TocItem[]
 }
 ```
 
@@ -91,7 +94,7 @@ Options:
 - `langs`: additional Shiki languages to load up-front
 - `markdownIt`: markdown-it constructor options (default: `{ html: true }`)
 - `plugins`: markdown-it plugins (`(md: MarkdownIt) => void`)
-- `toc`: `Callable<TocItem[], C>` — the general table of contents
+- `toc`: `Callable<TocItem[], C>` — the general table of contents, made available to layout templates as `ctx.toc` (only set when supplied)
 - `force`: overwrite existing output files, default `true` (site builds are non-interactive; when `false` existing files are skipped with a warning)
 
 A layout template is a Pinion template in the form
@@ -106,24 +109,31 @@ The layout is resolved per page:
 2. Otherwise `options.layout` is used
 3. If neither is set, the rendered HTML is written as-is
 
-The general table of contents is a plain object in the form
-
-```ts
-type TocItem = {
-  // The title of the entry
-  title: string
-  // The route the entry links to
-  route?: string
-  // Nested entries
-  children?: TocItem[]
-}
-```
-
-It is resolved after the pages are rendered (so the default can use the page titles) and made available to layout templates as `ctx.toc`. The `renderMarkdown` task returns the context extended with `toc`. If no table of contents is supplied, a flat list is generated from the page titles and routes.
+The main table of contents (`ctx.toc`, see above for the `TocItem` shape) is resolved with `Callable` support and made available to layout templates as `ctx.toc`. The `renderMarkdown` task returns the context extended with `toc` (optional, only present when supplied).
 
 ### Syntax highlighting
 
 Code fences are highlighted with Shiki using the configured theme. Languages are collected from the pages code fences in a first pass and loaded automatically; fences with languages Shiki does not know (or that fail to load) fall back to escaped default rendering.
+
+### `writeSearchIndex(file, options)`
+
+- `file`: `Callable<string, C>` — the JSON file to write, resolved against `ctx.cwd` (parent folders are created)
+- Requires `ctx.pages`, e.g. set by a preceding `loadMarkdown` and `renderMarkdown` task pair
+- Writes a search index as a JSON array with one entry per page. The format is library agnostic so it can be loaded by client-side search libraries (MiniSearch, FlexSearch, lunr, Orama etc.):
+
+```json
+[
+  { "title": "Home", "path": "index.html", "text": "Home Some markdown ..." }
+]
+```
+
+- The plain `text` is extracted from the rendered HTML by stripping tags and entities and collapsing whitespace
+- For very large sites, a chunked index produced by a dedicated tool like Pagefind (run after the build) is a good alternative
+
+Options:
+
+- `converter`: `(entry: SearchIndexEntry, page: PageData, ctx: C) => SearchIndexEntry | Promise<SearchIndexEntry>` — modify each entry, e.g. to add custom fields
+- `force`: overwrite an existing file, default `true` (when `false` an existing file is skipped with a warning)
 
 ## Example
 
@@ -158,5 +168,6 @@ Tests live in `test/` and use markdown fixtures in `test/fixtures`. They verify:
 - Layout selection via `options.layout`, `options.layouts` and frontmatter (including errors for unknown layouts)
 - Syntax highlighting of code fences
 - Table of contents extraction, heading anchors and titles
-- The general table of contents (`ctx.toc`), supplied and generated by default
+- The main table of contents (`ctx.toc`) supplied via the `toc` option
+- The search index written by `writeSearchIndex` (entries, plain text extraction, converter)
 - Trace entries for all tasks

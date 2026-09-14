@@ -32,45 +32,34 @@ export type PageData = {
   /**
    * The nested table of contents, set by the `renderMarkdown` task
    */
-  toc: TocEntry[]
-}
-
-export type TocEntry = {
-  /**
-   * The heading level (1-6)
-   */
-  level: number
-  /**
-   * The heading text
-   */
-  text: string
-  /**
-   * The anchor slug, also used as the heading `id`
-   */
-  slug: string
-  /**
-   * Headings at deeper levels
-   */
-  children: TocEntry[]
+  toc: TocItem[]
 }
 
 export type TocItem = {
   /**
-   * The title of the table of contents entry
+   * The title of the entry (the heading text for page tables of contents)
    */
   title: string
   /**
-   * The route the entry links to
+   * The path the entry links to (the anchor slug for page tables of contents)
    */
-  route?: string
+  path?: string
   /**
-   * Nested table of contents entries
+   * Nested entries
    */
   children?: TocItem[]
 }
 
 export type PagesContext = {
   pages: PageData[]
+}
+
+export type TocContext = {
+  /**
+   * The general table of contents, set by the `renderMarkdown` task
+   * when the `toc` option is supplied
+   */
+  toc?: TocItem[]
 }
 
 export type Layout<C extends PinionContext = PinionContext> = (

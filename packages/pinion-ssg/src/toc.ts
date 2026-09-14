@@ -1,5 +1,5 @@
 import type { Token } from 'markdown-it'
-import { TocEntry } from './core.js'
+import { TocItem } from './core.js'
 
 export const slugify = (text: string) =>
   text
@@ -31,6 +31,8 @@ const headingText = (token: Token) =>
     .join('')
     .trim()
 
+type Heading = TocItem & { level: number; path: string }
+
 /**
  * Extracts a flat list of headings from markdown-it tokens and sets the
  * slug as the `id` attribute on the heading open tokens.
@@ -38,9 +40,9 @@ const headingText = (token: Token) =>
  * @param tokens The markdown-it tokens of a page
  * @returns The flat list of headings
  */
-export const extractHeadings = (tokens: Token[]) => {
+export const extractHeadings = (tokens: Token[]): Heading[] => {
   const slug = createSlugger()
-  const headings: { level: number; text: string; slug: string }[] = []
+  const headings: Heading[] = []
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
@@ -50,15 +52,11 @@ export const extractHeadings = (tokens: Token[]) => {
     }
 
     const inline = tokens[i + 1]
-    const text = inline?.type === 'inline' ? headingText(inline) : ''
-    const entry = {
-      level: Number(token.tag.slice(1)),
-      text,
-      slug: slug(text)
-    }
+    const title = inline?.type === 'inline' ? headingText(inline) : ''
+    const path = slug(title)
 
-    token.attrSet('id', entry.slug)
-    headings.push(entry)
+    token.attrSet('id', path)
+    headings.push({ level: Number(token.tag.slice(1)), title, path })
   }
 
   return headings
@@ -70,25 +68,27 @@ export const extractHeadings = (tokens: Token[]) => {
  * @param headings The flat list of headings
  * @returns The nested table of contents
  */
-export const buildTocTree = (headings: { level: number; text: string; slug: string }[]) => {
-  const tree: TocEntry[] = []
-  const stack: TocEntry[] = []
+export const buildTocTree = (headings: Heading[]): TocItem[] => {
+  type TocNode = Heading & { children: TocNode[] }
+  const strip = ({ title, path, children }: TocNode): TocItem => ({ title, path, children: children.map(strip) })
+  const nodes: TocNode[] = []
+  const stack: TocNode[] = []
 
   for (const heading of headings) {
-    const entry: TocEntry = { ...heading, children: [] }
+    const node: TocNode = { ...heading, children: [] }
 
     while (stack.length && stack[stack.length - 1].level >= heading.level) {
       stack.pop()
     }
 
     if (stack.length) {
-      stack[stack.length - 1].children.push(entry)
+      stack[stack.length - 1].children.push(node)
     } else {
-      tree.push(entry)
+      nodes.push(node)
     }
 
-    stack.push(entry)
+    stack.push(node)
   }
 
-  return tree
+  return nodes.map(strip)
 }

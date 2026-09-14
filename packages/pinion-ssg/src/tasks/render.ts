@@ -1,7 +1,7 @@
 import { basename, dirname, join, resolve } from 'path'
 import { mkdir } from 'fs/promises'
 import { Callable, getCallable, PinionContext } from '@featherscloud/pinion'
-import { Layout, PageData, PagesContext, TocItem } from '../core.js'
+import { Layout, PagesContext, TocContext, TocItem } from '../core.js'
 import { MarkdownItOptions, MarkdownItPlugin, createMarkdownRenderer } from '../markdown.js'
 import { extractHeadings, buildTocTree } from '../toc.js'
 import { addTrace, writeOutputFile } from './helpers.js'
@@ -33,8 +33,7 @@ export type RenderMarkdownOptions<C extends PinionContext = PinionContext> = {
   plugins?: MarkdownItPlugin[]
   /**
    * The general table of contents, made available to layout templates as
-   * `ctx.toc`. Defaults to a flat list generated from the page titles
-   * and routes
+   * `ctx.toc`
    */
   toc?: Callable<TocItem[], C>
   /**
@@ -44,9 +43,6 @@ export type RenderMarkdownOptions<C extends PinionContext = PinionContext> = {
 }
 
 const identity = (html: string) => html
-
-const defaultToc = (pages: PageData[]): TocItem[] =>
-  pages.map(({ title, route }) => ({ title, route }))
 
 /**
  * Renders all pages in the context to HTML files and writes them to the
@@ -61,7 +57,7 @@ export const renderMarkdown =
     to: Callable<string, C>,
     options: RenderMarkdownOptions<C> = {}
   ) =>
-  async (ctx: C): Promise<C & { toc: TocItem[] }> => {
+  async (ctx: C): Promise<C & TocContext> => {
     const target = resolve(ctx.cwd, await getCallable(to, ctx))
     const md = await createMarkdownRenderer(
       ctx.pages.map((page) => page.content),
@@ -76,12 +72,12 @@ export const renderMarkdown =
 
       page.html = md.renderer.render(tokens, md.options, env)
       page.toc = toc
-      page.title = page.frontmatter.title || toc[0]?.text || basename(page.route, '.html')
+      page.title = page.frontmatter.title || toc[0]?.title || basename(page.route, '.html')
     }
 
-    // The default table of contents is generated from the rendered page titles
-    const toc = await getCallable(options.toc ?? defaultToc(ctx.pages), ctx)
-    const siteCtx = { ...ctx, toc }
+    // The general table of contents is only set when supplied
+    const toc = options.toc === undefined ? undefined : await getCallable(options.toc, ctx)
+    const siteCtx: C & TocContext = { ...ctx, toc }
 
     for (const page of ctx.pages) {
       const name = page.frontmatter.layout

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import { mkdir, readFile, rm, writeFile } from 'fs/promises'
 import assert from 'assert'
 import { getContext } from '@featherscloud/pinion'
-import { loadMarkdown, renderMarkdown } from '../src/index.js'
+import { loadMarkdown, renderMarkdown, writeSearchIndex } from '../src/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -42,33 +42,27 @@ describe('@featherscloud/pinion-ssg', () => {
 
     assert.deepStrictEqual(index.toc, [
       {
-        level: 1,
-        text: 'Home',
-        slug: 'home',
+        title: 'Home',
+        path: 'home',
         children: [
           {
-            level: 2,
-            text: 'Features',
-            slug: 'features',
-            children: [{ level: 3, text: 'Highlighting', slug: 'highlighting', children: [] }]
+            title: 'Features',
+            path: 'features',
+            children: [{ title: 'Highlighting', path: 'highlighting', children: [] }]
           },
-          { level: 2, text: 'More', slug: 'more', children: [] }
+          { title: 'More', path: 'more', children: [] }
         ]
       }
     ])
     assert.deepStrictEqual(plain.toc, [
-      { level: 2, text: 'Setup', slug: 'setup', children: [] },
-      { level: 2, text: 'Setup', slug: 'setup-1', children: [] }
+      { title: 'Setup', path: 'setup', children: [] },
+      { title: 'Setup', path: 'setup-1', children: [] }
     ])
     assert.strictEqual(index.title, 'Home page')
     // Falls back to the first heading text
     assert.strictEqual(plain.title, 'Setup')
-    // The default table of contents is generated from the page titles and routes
-    assert.deepStrictEqual(ctx.toc, [
-      { title: 'Getting started', route: 'guides/getting-started.html' },
-      { title: 'Home page', route: 'index.html' },
-      { title: 'Setup', route: 'plain.html' }
-    ])
+    // Without a supplied `toc` option no general table of contents is set
+    assert.strictEqual(ctx.toc, undefined)
 
     const { trace } = ctx.pinion
 
@@ -134,9 +128,9 @@ describe('@featherscloud/pinion-ssg', () => {
     const toc = [
       {
         title: 'Guides',
-        children: [{ title: 'Getting started', route: 'guides/getting-started.html' }]
+        children: [{ title: 'Getting started', path: 'guides/getting-started.html' }]
       },
-      { title: 'Home page', route: 'index.html' }
+      { title: 'Home page', path: 'index.html' }
     ]
     const ctx = await Promise.resolve(initialCtx)
       .then(loadMarkdown('fixtures/content'))
@@ -156,6 +150,48 @@ describe('@featherscloud/pinion-ssg', () => {
     )
 
     assert.ok(docsHtml.toString().startsWith('<nav>Guides,Home page</nav>'))
+  })
+
+  it('writes a search index', async () => {
+    const initialCtx = getContext({ cwd: __dirname })
+    const ctx = await Promise.resolve(initialCtx)
+      .then(loadMarkdown('fixtures/content'))
+      .then(
+        renderMarkdown('tmp/search', {
+          layouts: { docs: (html) => `<div class="docs">${html}</div>` }
+        })
+      )
+      .then(
+        writeSearchIndex('tmp/search-index.json', {
+          converter: (entry) => ({ ...entry, custom: true })
+        })
+      )
+
+    const index = JSON.parse(
+      (await readFile(path.join(__dirname, 'tmp', 'search-index.json'))).toString()
+    )
+
+    assert.deepStrictEqual(
+      index.map(({ title, path, custom }: any) => ({ title, path, custom })),
+      [
+        { title: 'Getting started', path: 'guides/getting-started.html', custom: true },
+        { title: 'Home page', path: 'index.html', custom: true },
+        { title: 'Setup', path: 'plain.html', custom: true }
+      ]
+    )
+
+    const [docs, home, plain] = index.map((entry: any) => entry.text)
+
+    // Plain text contains the code fence and heading text
+    assert.ok(home.includes('Some markdown with a link .'))
+    assert.ok(home.includes('Features Highlighting'))
+    assert.ok(home.includes("const hello = 'world'"))
+    assert.ok(plain.includes('Just plain text with html .'))
+    assert.ok(plain.includes('Setup Setup'))
+    // Layout markup is not part of the text
+    assert.ok(!docs.includes('<'))
+    assert.ok(!docs.includes('class="docs"'))
+    assert.strictEqual(ctx.pinion.trace[ctx.pinion.trace.length - 1].name, 'writeSearchIndex')
   })
 
   it('throws an error for unknown layouts', async () => {
