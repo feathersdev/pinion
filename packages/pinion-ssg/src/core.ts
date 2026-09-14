@@ -24,6 +24,49 @@ export type PageData = {
    * The rendered HTML, set by the `renderMarkdown` task
    */
   html?: string
+  /**
+   * The page title: the `title` frontmatter, the first heading text or the
+   * route base name, whatever is found first. Set by the `renderMarkdown` task
+   */
+  title: string
+  /**
+   * The nested table of contents, set by the `renderMarkdown` task
+   */
+  toc: TocEntry[]
+}
+
+export type TocEntry = {
+  /**
+   * The heading level (1-6)
+   */
+  level: number
+  /**
+   * The heading text
+   */
+  text: string
+  /**
+   * The anchor slug, also used as the heading `id`
+   */
+  slug: string
+  /**
+   * Headings at deeper levels
+   */
+  children: TocEntry[]
+}
+
+export type TocItem = {
+  /**
+   * The title of the table of contents entry
+   */
+  title: string
+  /**
+   * The route the entry links to
+   */
+  route?: string
+  /**
+   * Nested table of contents entries
+   */
+  children?: TocItem[]
 }
 
 export type PagesContext = {

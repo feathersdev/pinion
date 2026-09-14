@@ -6,6 +6,12 @@ title: Home page
 
 Some *markdown* with a [link](https://example.com).
 
+## Features
+
+### Highlighting
+
 ```js
 const hello = 'world'
 ```
+
+## More

@@ -28,7 +28,9 @@ export const loadMarkdown =
         source,
         route: relative(folder, source).replace(markdownExtension, '.html'),
         frontmatter,
-        content
+        content,
+        title: '',
+        toc: []
       })
     }
 
