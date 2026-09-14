@@ -26,7 +26,7 @@ export const loadModule = async (file: string) => {
   const fileName = getFileUrl(file)
   const { typescript } = process.features
 
-  if (fileName.endsWith('.ts') && typescript !== 'strip' && typescript !== 'transform') {
+  if (fileName.endsWith('.ts') && !typescript) {
     throw new Error(
       `Loading TypeScript generators requires native TypeScript support (Node.js >= 22.18, current version: ${process.version})`
     )
