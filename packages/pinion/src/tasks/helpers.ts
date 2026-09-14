@@ -1,6 +1,7 @@
 import { relative } from 'path'
 import { existsSync } from 'fs'
 import { writeFile } from 'fs/promises'
+import { createInterface } from 'readline/promises'
 import { PinionContext } from '../core.js'
 
 /**
@@ -26,20 +27,16 @@ export const overwrite = async <C extends PinionContext>(
   fileName: string,
   options: Partial<WriteFileOptions> = {}
 ) => {
-  const { prompt, logger } = ctx.pinion
+  const { logger } = ctx.pinion
   const force = options.force !== undefined ? options.force : ctx.pinion.force
   const relativeName = relative(ctx.cwd, fileName)
 
   if (existsSync(fileName) && !force) {
-    const { overwrite } = await prompt([
-      {
-        type: 'confirm',
-        name: 'overwrite',
-        message: `File ${relativeName} already exists. Overwrite?`
-      }
-    ])
+    const rl = createInterface({ input: process.stdin, output: process.stdout })
+    const answer = await rl.question(`File ${relativeName} already exists. Overwrite? (y/N) `)
+    rl.close()
 
-    if (!overwrite) {
+    if (!['y', 'yes'].includes(answer.trim().toLowerCase())) {
       logger.warn(`Skipped file ${relativeName}`)
       return false
     }

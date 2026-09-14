@@ -1,4 +1,3 @@
-export * from './prompt.js'
 export * from './render.js'
 export * from './inject.js'
 export * from './run.js'

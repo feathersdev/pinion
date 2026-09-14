@@ -54,9 +54,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@types/inquirer": "^9.0.7",
-    "commander": "^13.0.0",
-    "inquirer": "^9.3.2"
+    "commander": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

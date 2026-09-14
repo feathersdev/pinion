@@ -17,6 +17,8 @@ npm install @featherscloud/pinion --save-dev
 
 While generators are written in TypeScript your project can use any programming language. For projects without a `package.json` run `npm init --yes` first.
 
+Pinion ships without an interactive prompt library. For asking questions, install one like [Inquirer](https://github.com/SBoudrias/Inquirer.js) (e.g. `npm install @inquirer/prompts --save-dev`) and use it in your generators as shown in the [User Input](#user-input) section.
+
 A Pinion generator has two ingredients:
 
 - A TypeScript interface to define `Context`
@@ -52,16 +54,17 @@ Once you ran the command, you can find your `readme.md` file in the current dire
 
 ### Asking questions
 
-Prompts 
+For interactive prompts, install a prompt library like [Inquirer](https://github.com/SBoudrias/Inquirer.js):
 
 ```sh
 npm install @inquirer/prompts --save-dev
 ```
 
-Pinion comes with a `prompt` utility that works with your typed context. You can ask questions from the command line with the `prompt` task:
+Inquirer prompts are plain async functions that return the answer. In a custom `.then` task, await the prompts and return an expanded context with the answers:
 
 ```ts
-import { type PinionContext, prompt, renderTemplate, toFile } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
 
 interface Context extends PinionContext {
   name: string
@@ -81,23 +84,18 @@ Copyright (c) ${new Date().getFullYear()}
 
 export function generate(init: Context) {
   return Promise.resolve(init)
-    .then(
-      prompt({
-        name: {
-          type: 'input',
-          message: 'What is the name of your app?'
-        },
-        description: {
-          type: 'input',
-          message: 'Write a short description'
-        }
-      })
-    )
+    .then(async (context) => {
+      // Each prompt returns the answer, which we add to the context here
+      const name = await input({ message: 'What is the name of your app?' })
+      const description = await input({ message: 'Write a short description' })
+
+      return { ...context, name, description }
+    })
     .then(renderTemplate(readme, toFile('readme.md')))
 }
 ```
 
-Pinion uses [Inquirer](https://www.npmjs.com/package/inquirer) under the hood to ask questions. The `prompt` task takes an array or object of [Inquirer questions](https://www.npmjs.com/package/inquirer#question) and returns a function that takes a context and returns a promise with the updated context. The updated context can then be used in the next step to render the template with the answers. If you already created the `readme.md` the generator will ask if you want to overwrite the existing file.
+If you already created the `readme.md` the generator will ask if you want to overwrite the existing file. See the [User Input](#user-input) section for more details on prompting and command line arguments.
 
 ## Generators
 
@@ -202,7 +200,8 @@ To make a reusable function, just export it from a `.ts` file. Then it can be im
 A task is any step within the `generate` function. Pinion tasks rely on functional programming through `Promise.then` chains. Each step in the generator can be followed and they are still bundled as a testable and embeddable plain function.
 
 ```ts [generators/tasks.tpl.ts]
-import { type PinionContext, prompt } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext } from '@featherscloud/pinion'
 
 interface Context extends PinionContext {
   message: string
@@ -225,18 +224,14 @@ export function generate(init: Context) {
 
       return context
     })
-    .then(
-      prompt({
-        name: {
-          type: 'input',
-          message: 'What is the name of your app?'
-        },
-        description: {
-          type: 'input',
-          message: 'Write a short description'
-        }
-      })
-    )
+    .then(async (context) => {
+      // Prompts are just async functions. The answers are added to the context
+      // by returning a new object
+      const name = await input({ message: 'What is the name of your app?' })
+      const description = await input({ message: 'Write a short description' })
+
+      return { ...context, name, description }
+    })
     .then(async (context) => {
       context.pinion.logger.log(`Got name "${context.name}" and description "${context.description}"`)
       return context
@@ -265,7 +260,8 @@ There are three main helpers for working with file pointers:
 The following example asks for the path the `readme.md` file should be generated in and then puts the path together dynamically based on the context:
 
 ```ts [generators/readme.tpl.ts]
-import { type PinionContext, prompt, renderTemplate, toFile } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
 
 // Setup the Context to receive user input
 interface Context extends PinionContext {
@@ -289,23 +285,16 @@ Copyright (c) ${new Date().getFullYear()}
 export function generate(init: Context) {
   return (
     Promise.resolve(init)
-      .then(
-        prompt({
-          name: {
-            type: 'input',
-            message: 'What is the name of your app?'
-          },
-          description: {
-            type: 'input',
-            message: 'Write a short description'
-          },
-          docsPath: {
-            type: 'input',
-            default: 'docs',
-            message: 'Where should the documentation live?'
-          }
+      .then(async (context) => {
+        const name = await input({ message: 'What is the name of your app?' })
+        const description = await input({ message: 'Write a short description' })
+        const docsPath = await input({
+          message: 'Where should the documentation live?',
+          default: 'docs'
         })
-      )
+
+        return { ...context, name, description, docsPath }
+      })
       // Render the template
       .then(
         renderTemplate(
@@ -382,15 +371,8 @@ The available injection points are:
 The following example generates a TypeScript Express middleware and imports and registers it in `src/app.ts`:
 
 ```ts [generators/middleware.tpl.ts]
-import {
-  type PinionContext,
-  after,
-  inject,
-  prepend,
-  prompt,
-  renderTemplate,
-  toFile
-} from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, after, inject, prepend, renderTemplate, toFile } from '@featherscloud/pinion'
 
 interface Context extends PinionContext {
   name: string
@@ -414,14 +396,11 @@ export const ${name} = (req: Request, res: Response, next: NextFunction) => {
 export function generate(init: PinionContext) {
   return (
     Promise.resolve(init)
-      .then(
-        prompt({
-          name: {
-            type: 'input',
-            message: 'What is the name of your middleware?'
-          }
-        })
-      )
+      .then(async (context) => {
+        const name = await input({ message: 'What is the name of your middleware?' })
+
+        return { ...context, name }
+      })
       // Render the middleware template
       .then(
         renderTemplate(
@@ -451,10 +430,32 @@ npx pinion generators/middleware.tpl.ts
 
 ### Prompting
 
-The `prompt` task allows asking questions from the command line using the [Inquirer](https://www.npmjs.com/package/inquirer) library. It gets passed a [list of Inquirer questions](https://www.npmjs.com/package/inquirer#question) that can also be put together based on the current context. This can be used to e.g. ask questions conditionally or skip them if the value is already passed (e.g. in an automated test):
+[Inquirer](https://github.com/SBoudrias/Inquirer.js) is the recommended library for asking questions from the command line:
+
+```sh
+npm install @inquirer/prompts --save-dev
+```
+
+Inquirer prompts are plain async functions. Each prompt takes a configuration object and returns a promise with the answer. The available prompts are:
+
+| Prompt     | Description                                              |
+| ---------- | -------------------------------------------------------- |
+| `input`    | Free text input                                          |
+| `number`   | Like `input` with built-in number validation             |
+| `confirm`  | Yes/no question, returns a boolean                       |
+| `select`   | Choose one from a list                                   |
+| `checkbox` | Choose multiple from a list                              |
+| `rawlist`  | Choose from a numbered list                              |
+| `expand`   | Collapsed list that expands on key press                 |
+| `search`   | Searchable, filterable list                              |
+| `password` | Input hidden from the terminal                           |
+| `editor`   | Launches the user's preferred editor on a temporary file |
+
+Since answers are plain return values, a custom `.then` task can await any number of prompts and return an expanded context. Conditions like "only ask if the value is not already set" (e.g. when it was passed as a command line argument or in an automated test) are written with plain JavaScript:
 
 ```ts [generators/readme.tpl.ts]
-import { type PinionContext, prompt, renderTemplate, toFile } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
 
 // Setup the Context to receive user input
 interface Context extends PinionContext {
@@ -477,24 +478,14 @@ Copyright (c) ${new Date().getFullYear()}
 export function generate(init: Context) {
   return (
     Promise.resolve(init)
-      // Ask prompts (using Inquirer)
-      .then(
-        prompt((context) => {
-          // Only ask question if `name` or `description` are not passed
-          return {
-            name: {
-              type: 'input',
-              message: 'What is the name of your app?',
-              when: !context.name
-            },
-            description: {
-              type: 'input',
-              message: 'Write a short description',
-              when: !context.description
-            }
-          }
-        })
-      )
+      .then(async (context) => {
+        // Only ask if `name` or `description` are not passed
+        const name = context.name || (await input({ message: 'What is the name of your app?' }))
+        const description = context.description || (await input({ message: 'Write a short description' }))
+
+        // Expand the context with the answers
+        return { ...context, name, description }
+      })
       // Render the template
       .then(renderTemplate(readme, toFile('readme.md')))
   )
@@ -516,7 +507,8 @@ npx pinion generators/readme.ts --description hello something
 `context.argv` would be `['--description', 'hello', 'something']`. The list can be parsed manually and Pinion also ships with a `commander` task that uses the `commander` module to create command-line interfaces. The following example adds `--name` and `--description` command line arguments and skips prompting the user if they are passed:
 
 ```ts [generators/readme.tpl.ts]
-import { Command, type PinionContext, commander, prompt, renderTemplate, toFile } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { Command, type PinionContext, commander, renderTemplate, toFile } from '@featherscloud/pinion'
 
 const program = new Command()
   .description('A readme generator')
@@ -546,24 +538,14 @@ export function generate(init: Context) {
     Promise.resolve(init)
       // Parse command line arguments
       .then(commander(program))
-      // Ask prompts (using Inquirer)
-      .then(
-        prompt((context) => {
-          // Only ask question if `name` or `description` are not passed
-          return {
-            name: {
-              type: 'input',
-              message: 'What is the name of your app?',
-              when: !context.name
-            },
-            description: {
-              type: 'input',
-              message: 'Write a short description',
-              when: !context.description
-            }
-          }
-        })
-      )
+      .then(async (context) => {
+        // Only ask if `name` or `description` are not passed
+        const name = context.name || (await input({ message: 'What is the name of your app?' }))
+        const description = context.description || (await input({ message: 'Write a short description' }))
+
+        // Expand the context with the answers
+        return { ...context, name, description }
+      })
       // Render the template
       .then(renderTemplate(readme, toFile('readme.md')))
   )
@@ -735,7 +717,8 @@ describe('readme generator tests', () => {
 ```
 
 ```ts [generators/readme.tpl.ts]
-import { type PinionContext, prompt, renderTemplate, toFile } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
 
 // Setup the Context to receive user input
 export interface Context extends PinionContext {
@@ -758,24 +741,14 @@ Copyright (c) ${new Date().getFullYear()}
 export function generate(init: Context) {
   return (
     Promise.resolve(init)
-      // Ask prompts (using Inquirer)
-      .then(
-        prompt((context) => {
-          // Only ask question if `name` or `description` are not passed
-          return {
-            name: {
-              type: 'input',
-              message: 'What is the name of your app?',
-              when: !context.name
-            },
-            description: {
-              type: 'input',
-              message: 'Write a short description',
-              when: !context.description
-            }
-          }
-        })
-      )
+      .then(async (context) => {
+        // Only ask question if `name` or `description` are not passed
+        const name = context.name || (await input({ message: 'What is the name of your app?' }))
+        const description = context.description || (await input({ message: 'Write a short description' }))
+
+        // Expand the context with the answers
+        return { ...context, name, description }
+      })
       // Render the template
       .then(renderTemplate(readme, toFile('readme.md')))
   )
@@ -835,10 +808,6 @@ export interface Configuration {
    */
   force: boolean
   /**
-   * The prompt instance, used to ask questions to the user
-   */
-  prompt: typeof prompt
-  /**
    * Trace messages of all executed generators
    */
   trace: PinionTrace[]
@@ -854,7 +823,7 @@ export interface Configuration {
 }
 ```
 
-These properties can be used inside of a task to e.g. log information or ask their own prompts.
+These properties can be used inside of a task to e.g. log information.
 
 ## API reference
 
@@ -868,20 +837,21 @@ renderTemplate<Context>((context) => `This is a dynamic template for ${context.n
 
 ### Tasks
 
-| Task             | Description                                                 |
-| ---------------- | ----------------------------------------------------------- |
-| `prompt`         | Ask Inquirer questions, update the context with the answers |
-| `commander`      | Parse command line arguments with a commander program       |
-| `renderTemplate` | Render a template string to a file                          |
-| `inject`         | Inject text into an existing file                           |
-| `when`           | Conditionally run a task                                    |
-| `exec`           | Run a shell command                                         |
-| `copyFiles`      | Recursively copy files from one location to another         |
-| `loadJSON`       | Load a JSON file and merge its data into the context        |
-| `writeJSON`      | Write JSON data to a file                                   |
-| `mergeJSON`      | Merge new data into an existing JSON file                   |
-| `runGenerators`  | Run all `*.tpl.ts` / `*.tpl.js` generators in a folder      |
-| `runGenerator`   | Run a single generator file                                 |
+| Task             | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `commander`      | Parse command line arguments with a commander program  |
+| `renderTemplate` | Render a template string to a file                     |
+| `inject`         | Inject text into an existing file                      |
+| `when`           | Conditionally run a task                               |
+| `exec`           | Run a shell command                                    |
+| `copyFiles`      | Recursively copy files from one location to another    |
+| `loadJSON`       | Load a JSON file and merge its data into the context   |
+| `writeJSON`      | Write JSON data to a file                              |
+| `mergeJSON`      | Merge new data into an existing JSON file              |
+| `runGenerators`  | Run all `*.tpl.ts` / `*.tpl.js` generators in a folder |
+| `runGenerator`   | Run a single generator file                            |
+
+For user prompts install a prompt library like [Inquirer](https://github.com/SBoudrias/Inquirer.js) and use it in a custom `.then` task as shown in the [Prompting](#prompting) section.
 
 ### File helpers
 
@@ -892,36 +862,6 @@ renderTemplate<Context>((context) => `This is a dynamic template for ${context.n
 | `fromFile` | Like `file` but makes sure that the file already exists                   |
 
 File names can be put together dynamically by passing a context callback: `toFile(({ name }) => ['src', 'middleware', `${name}.ts`])`.
-
-### prompt
-
-`prompt(options|context => options)` takes a list of questions using [inquirer.js](https://github.com/SBoudrias/Inquirer.js) and updates the context with the answers. A context callback can be used to only ask prompts conditionally (e.g. skipping when they have already been provided from the command line).
-
-```ts
-import { type PinionContext, prompt, renderTemplate, toFile, when } from '@featherscloud/pinion'
-
-// The main types of your generator
-export interface Context extends PinionContext {
-  // Add the types from prompts and command line arguments here
-  name: string
-}
-
-export function generate(init: Context) {
-  return Promise.resolve(init)
-    .then(
-      prompt((context) => [
-        {
-          type: 'input',
-          name: 'name',
-          message: 'What is the name of your app?',
-          // Only show prompt if there is no name
-          when: !context.name
-        }
-      ])
-    )
-    .then(renderTemplate(({ name }) => `Hello ${name}`, toFile('hello.md')))
-}
-```
 
 ### commander
 
@@ -952,7 +892,8 @@ export function generate(init: Context) {
 `renderTemplate(text|context => text, toFile, writeOptions)` renders a string to a target file. `writeOptions` can be `{ force: true }` to skip prompting if an existing file should be overwritten.
 
 ```ts
-import { type PinionContext, prompt, renderTemplate, toFile } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile } from '@featherscloud/pinion'
 
 export interface Context extends PinionContext {
   name: string
@@ -969,17 +910,12 @@ Copyright (c) ${new Date().getFullYear()}
 
 export function generate(init: Context) {
   return Promise.resolve(init)
-    .then(
-      prompt((context) => [
-        {
-          type: 'input',
-          name: 'name',
-          message: 'What is the name of your app?',
-          // Only show prompt if there is no --name CLI argument
-          when: !context.name
-        }
-      ])
-    )
+    .then(async (context) => {
+      // Only ask if there is no --name CLI argument
+      const name = context.name || (await input({ message: 'What is the name of your app?' }))
+
+      return { ...context, name }
+    })
     .then(renderTemplate(template, toFile('readme.md')))
 }
 ```
@@ -989,7 +925,8 @@ export function generate(init: Context) {
 `when(boolean|context => boolean, operation)` evaluates a condition and runs the task if it returns true.
 
 ```ts
-import { type PinionContext, prompt, renderTemplate, toFile, when } from '@featherscloud/pinion'
+import { input } from '@inquirer/prompts'
+import { type PinionContext, renderTemplate, toFile, when } from '@featherscloud/pinion'
 
 export interface Context extends PinionContext {
   name: string
@@ -997,16 +934,11 @@ export interface Context extends PinionContext {
 
 export function generate(init: Context) {
   return Promise.resolve(init)
-    .then(
-      prompt((context) => [
-        {
-          type: 'input',
-          name: 'name',
-          message: 'What is the name of your app?',
-          when: !context.name
-        }
-      ])
-    )
+    .then(async (context) => {
+      const name = context.name || (await input({ message: 'What is the name of your app?' }))
+
+      return { ...context, name }
+    })
     .then(
       when<Context>(
         ({ name }) => name === 'David',

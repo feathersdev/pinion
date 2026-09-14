@@ -5,7 +5,6 @@ import {
   runGenerators,
   renderTemplate,
   when,
-  prompt,
   inject,
   toFile,
   fromFile,
@@ -22,13 +21,14 @@ const __dirname = dirname(__filename)
 
 export interface GeneratorContext extends PinionContext {
   name: string
+  age: number
   order: string[]
   a: boolean
   b: boolean
   finalized: boolean
 }
 
-export type GeneratorArguments = PinionContext & Partial<Pick<GeneratorContext, 'name'>>
+export type GeneratorArguments = PinionContext & Partial<Pick<GeneratorContext, 'name' | 'age'>>
 
 export const generate = (ctx: GeneratorArguments) =>
   Promise.resolve(ctx)
@@ -37,18 +37,11 @@ export const generate = (ctx: GeneratorArguments) =>
     .then(inject('This is injected before\n', before(/Hello\s/), toFile('tmp', 'hello.md')))
     .then(inject('<!-- Prepended -->', prepend(), toFile('tmp', 'hello.md')))
     .then(inject('<!-- Appended -->', append(), toFile('tmp', 'hello.md')))
-    .then(
-      prompt((ctx) => ({
-        name: {
-          type: 'input',
-          when: !ctx.name
-        },
-        age: {
-          type: 'number',
-          when: !ctx.name
-        }
-      }))
-    )
+    // A custom task can expand the context with new values, e.g. from a prompt
+    .then((ctx) => ({
+      ...ctx,
+      age: ctx.age || 0
+    }))
     .then(
       when(
         (ctx) => !!ctx.name && !ctx.age,

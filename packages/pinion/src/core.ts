@@ -1,10 +1,7 @@
 import { spawn, SpawnOptions } from 'child_process'
-import inquirer from 'inquirer'
-import { styleText } from 'node:util'
+import { styleText } from 'util'
 
 import { loadModule } from './utils.js'
-
-const { prompt } = inquirer
 
 export interface Logger {
   warn: (msg: string) => void
@@ -57,10 +54,6 @@ export type Configuration = {
    */
   force: boolean
   /**
-   * The prompt instance, used to ask questions to the user
-   */
-  prompt: typeof prompt
-  /**
    * Trace messages of all executed generators
    */
   trace: PinionTrace[]
@@ -112,7 +105,6 @@ export const mapCallables = <X, C extends PinionContext>(callables: Callable<X, 
  * @returns
  */
 export const getConfig = (initialConfig?: Partial<Configuration>): Configuration => ({
-  prompt,
   logger: new BasicLogger(),
   cwd: process.cwd(),
   force: false,
