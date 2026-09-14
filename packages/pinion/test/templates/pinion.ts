@@ -2,6 +2,7 @@ import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import {
   PinionContext,
+  runGenerator,
   runGenerators,
   renderTemplate,
   when,
@@ -50,6 +51,8 @@ export const generate = (ctx: GeneratorArguments) =>
     )
     .then(copyFiles(fromFile(__dirname), toFile('tmp', 'copy')))
     .then(runGenerators(__dirname))
+    // `single.ts` has no `.tpl` suffix so it is only run explicitly
+    .then(runGenerator(__dirname, 'single.ts'))
     .then((ctx) => ({
       ...ctx,
       finalized: true

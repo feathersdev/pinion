@@ -63,5 +63,10 @@ describe('@featherscloud/pinion', () => {
         message: 'This is an example JSON file'
       }
     })
+
+    // The file written by the generator that `runGenerator` ran
+    const single = await readFile(path.join(__dirname, 'tmp', 'single.md'))
+
+    assert.strictEqual(single.toString().replace(/\r/g, ''), 'This is a single generator')
   })
 })
