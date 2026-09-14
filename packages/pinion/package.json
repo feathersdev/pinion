@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/feathershq/pinion.git"
+    "url": "git://github.com/feathersdev/pinion.git"
   },
   "author": {
     "name": "Feathers contributors",
@@ -29,7 +29,7 @@
   },
   "contributors": [],
   "bugs": {
-    "url": "https://github.com/feathershq/pinion/issues"
+    "url": "https://github.com/feathersdev/pinion/issues"
   },
   "engines": {
     "node": ">= 22.18"

@@ -1,6 +1,6 @@
 # @featherscloud/pinion
 
-[![CI](https://github.com/feathershq/pinion/actions/workflows/nodejs.yml/badge.svg)](https://github.com/feathershq/pinion/actions/workflows/nodejs.yml)
+[![CI](https://github.com/feathersdev/pinion/actions/workflows/nodejs.yml/badge.svg)](https://github.com/feathersdev/pinion/actions/workflows/nodejs.yml)
 [![Download Status](https://img.shields.io/npm/dm/@featherscloud/pinion.svg?style=flat-square)](https://www.npmjs.com/package/@featherscloud/pinion)
 
 > A fast and typesafe code generator
